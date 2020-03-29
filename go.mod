@@ -1,4 +1,4 @@
-module github.com/foxygoat/jsonnext
+module foxygo.at/jsonnext
 
 go 1.13
 
