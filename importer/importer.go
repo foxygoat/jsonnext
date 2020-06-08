@@ -82,7 +82,12 @@ func (i *Importer) AppendSearchFromEnv(envvar string) {
 // This method is defined in the jsonnet.Importer interface:
 //   https://godoc.org/github.com/google/go-jsonnet#Importer
 func (i *Importer) Import(source, imp string) (jsonnet.Contents, string, error) {
-	dir, _ := path.Split(source)
+	dir := path.Dir(source)
+	if dir = preserveNetRoot(source, dir); dir == "//" {
+		// There's no such thing as a "root" netpath. Preserve the
+		// host part if that's all there was.
+		dir = source
+	}
 	content, location, err := i.search(imp, dir)
 
 	if err == nil && content == noContent {
@@ -100,7 +105,7 @@ func (i *Importer) search(imp, dir string) (jsonnet.Contents, string, error) {
 
 	// try to import imp relative to source first, then the search path
 	for _, p := range append([]string{dir}, i.SearchPath...) {
-		location := path.Join(p, imp)
+		location := preserveNetRoot(p, path.Join(p, imp))
 		content, err := i.readViaCache(location)
 		// content found, or an error. Stop searching - we're done
 		// TODO(camh): Keep searching on hard errors. If a fetch results
@@ -147,6 +152,20 @@ func (i *Importer) fetcher() URLFetcher {
 	}
 
 	return i.Fetcher
+}
+
+// preserveRoot takes an original path and an alteration of that path
+// and returns the altered version with a double slash at the start if
+// the original path starts with a double slash. This is needed as
+// certain functions of the "path" package clean the path they return
+// which removes the leading double slash. As that has special meaning
+// to this importer, we need to preserve that prefix.
+// TODO(camh): Create a "netpath" package with these preservation semantics.
+func preserveNetRoot(orig, cleaned string) string {
+	if len(orig) > 1 && orig[0] == '/' && orig[1] == '/' {
+		return "/" + cleaned
+	}
+	return cleaned
 }
 
 func addScheme(imp string) string {
