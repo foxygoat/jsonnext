@@ -91,6 +91,27 @@ func TestImportNotFound(t *testing.T) {
 	require.Error(t, err)
 }
 
+func TestImportNetpathSource(t *testing.T) {
+	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
+	i := Importer{Fetcher: f}
+
+	_, _, err := i.Import("//example.com/y", "x")
+
+	require.Error(t, err)
+	require.Equal(t, []string{"https://example.com/x"}, f.urls)
+}
+
+func TestImportRootNetpathSource(t *testing.T) {
+	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
+	i := Importer{Fetcher: f}
+
+	// Should try to import `//example.com/x`, not `//x`
+	_, _, err := i.Import("//example.com", "x")
+
+	require.Error(t, err)
+	require.Equal(t, []string{"https://example.com/x"}, f.urls)
+}
+
 func TestSearchAbsolute(t *testing.T) {
 	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
 	i := Importer{Fetcher: f}
@@ -122,6 +143,18 @@ func TestSearchPathUntilFound(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "/a/x", location)
 	require.Equal(t, []string{"file:///a/x"}, f.urls)
+	require.Equal(t, "hello world", contents.String())
+}
+
+func TestSearchNetpath(t *testing.T) {
+	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
+	i := Importer{Fetcher: f, SearchPath: []string{"/1", "/2"}}
+
+	contents, location, err := i.search("x", "//example.com")
+
+	require.NoError(t, err)
+	require.Equal(t, "//example.com/x", location)
+	require.Equal(t, []string{"https://example.com/x"}, f.urls)
 	require.Equal(t, "hello world", contents.String())
 }
 
@@ -196,6 +229,22 @@ func TestFetcherExisting(t *testing.T) {
 	actual := i.fetcher()
 
 	require.Equal(t, expected, actual)
+}
+
+func TestPreserveNetRoot(t *testing.T) {
+	tests := map[string]struct{ inputOrig, inputClean, expected string }{
+		"single":     {"/a/b/c", "/a/b", "/a/b"},
+		"double":     {"//a/b/c", "/a/b", "//a/b"},
+		"emptyOrig":  {"", "/a/b", "/a/b"},
+		"emptyClean": {"/a/b/c", "", ""},
+	}
+	for name, tt := range tests {
+		tt := tt
+		t.Run(name, func(t *testing.T) { //nolint:wsl
+			actual := preserveNetRoot(tt.inputOrig, tt.inputClean)
+			require.Equal(t, tt.expected, actual)
+		})
+	}
 }
 
 func TestAddScheme(t *testing.T) {
