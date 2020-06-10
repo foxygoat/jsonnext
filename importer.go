@@ -1,15 +1,4 @@
-// Package importer provides a jsonnet Importer that loads files from https
-// URLs or from the filesystem. It maintains a slice of search paths on which
-// it searches for imports, allowing absolute and relative imports.
-//
-// A search path element may start with a double-slash (`//`) which is
-// interpreted as a HTTPS url without the `https:` scheme prefix. A search path
-// element starting with a single-slash (`/`) is an absolute path in the
-// processes filesystem. A search path without a leading slash is resolved
-// relative to the current working directory of the process.
-//
-// Only HTTPS is supported for network paths.
-package importer
+package jsonnext
 
 import (
 	"fmt"
