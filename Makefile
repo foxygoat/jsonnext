@@ -2,80 +2,57 @@
 # Generic Makefile for Go programs
 #
 
-all: build test check-coverage lint  ## build, test, check coverage and lint
+O = out
+
+all: test check-coverage lint  ## test, check coverage and lint
 	@if [ -e .git/rebase-merge ]; then git --no-pager log -1 --pretty='%h %s'; fi
 	@echo '$(COLOUR_GREEN)Success$(COLOUR_NORMAL)'
 
 clean::  ## Remove generated files
+	-rm -rf $O
 
 .PHONY: all clean
 
-# Get the first directory in GOPATH
-GOPATH1 = $(firstword $(subst :, ,$(GOPATH)))
+# --- Test ---------------------------------------------------------------------
 
-# -- Build ---------------------------------------------------------------------
-
-BINARIES = $(notdir $(filter-out ./cmd/_%,$(wildcard ./cmd/*)))
-INSTALL_DIR = $(or $(GOBIN),$(GOPATH1)/bin,$(HOME)/go/bin)
-INSTALLED_BINARIES = $(addprefix $(INSTALL_DIR)/,$(BINARIES))
-
-build: $(BINARIES)  ## Build binaries of directories in ./cmd
-install: $(INSTALLED_BINARIES)  ## Build and install binaries in $GOBIN or $GOPATH/bin
-
-ifneq ($(BINARIES),)
-$(BINARIES):
-	go build -o $@ ./cmd/$@
-
-$(INSTALLED_BINARIES):
-	go install ./cmd/$(@F)
-
-clean::
-	rm -f $(BINARIES)
-
-# We make $(BINARIES) and $(INSTALLED_BINARIES) .PHONY so we always call the
-# Go toolchain - it will decide what needs to be rebuilt.
-.PHONY: build $(BINARIES) $(INSTALLED_BINARIES)
-endif
-
-# -- Lint ----------------------------------------------------------------------
-
-GOLINT := golangci-lint
-GOLINT_DOCKER := docker run --rm -v $(GOPATH1):/go -v $(PWD):/src -w /src golangci/golangci-lint:v1.23.6
-
-# If $(GOLINT) is not installed, use docker to run it
-lint: lint-with-$(if $(shell which $(GOLINT)),local,docker)  ## lint the source code
-
-lint-with-local:
-	$(GOLINT) run
-
-lint-with-docker:  ## lint the source code with golangci-lint docker image
-	$(GOLINT_DOCKER) $(GOLINT) run
-
-.PHONY: lint lint-with-local lint-with-docker
-
-# -- Test ----------------------------------------------------------------------
-
-COVERFILE = coverage.out
+COVERFILE = $O/coverage.txt
 COVERAGE = 100
 
-test:  ## Run tests and generate a coverage file
+test: | $O ## Run tests and generate a coverage file
 	go test -coverprofile=$(COVERFILE) ./...
 
-check-coverage: test  ## Check that test coverage meets the required level
+cover: test  ## Check that test coverage meets the required level
 	@go tool cover -func=$(COVERFILE) | $(CHECK_COVERAGE) || $(FAIL_COVERAGE)
 
-cover: test  ## Show test coverage in your browser
+showcover: test  ## Show test coverage in your browser
 	go tool cover -html=$(COVERFILE)
-
-clean::
-	rm -f $(COVERFILE)
 
 CHECK_COVERAGE = awk -F '[ \t%]+' '/^total:/ && $$3 < $(COVERAGE) {exit 1}'
 FAIL_COVERAGE = { echo '$(COLOUR_RED)FAIL - Coverage below $(COVERAGE)%$(COLOUR_NORMAL)'; exit 1; }
 
-.PHONY: test check-coverage cover
+.PHONY: test cover showcover
 
-# --- Utilities ---------------------------------------------------------------
+# --- Lint ---------------------------------------------------------------------
+
+GOLINT_VERSION = 1.27.0
+GOLINT_INSTALLED_VERSION = $(or $(word 4,$(shell golangci-lint --version 2>/dev/null)),0.0.0)
+GOLINT_MIN_VERSION = $(shell printf '%s\n' $(GOLINT_VERSION) $(GOLINT_INSTALLED_VERSION) | sort -V | head -n 1)
+GOPATH1 = $(firstword $(subst :, ,$(GOPATH)))
+LINT_TARGET = lint-$(if $(filter $(GOLINT_MIN_VERSION),$(GOLINT_VERSION)),local,with-docker)
+
+lint: $(LINT_TARGET)  ## Lint source code
+
+lint-local:  ## Lint source code with locally installed golangci-lint
+	golangci-lint run
+
+lint-with-docker:  ## Lint source code with docker image of golangci-lint
+	docker run --rm -v $(GOPATH1):/go -v $(PWD):/src -w /src \
+		golangci/golangci-lint:v$(GOLINT_VERSION) \
+		golangci-lint run
+
+.PHONY: lint lint-local lint-with-docker
+
+# --- Utilities ----------------------------------------------------------------
 
 COLOUR_NORMAL = $(shell tput sgr0 2>/dev/null)
 COLOUR_RED    = $(shell tput setaf 1 2>/dev/null)
@@ -84,5 +61,8 @@ COLOUR_WHITE  = $(shell tput setaf 7 2>/dev/null)
 
 help:
 	@awk -F ':.*## ' 'NF == 2 && $$1 ~ /^[A-Za-z0-9_-]+$$/ { printf "$(COLOUR_WHITE)%-30s$(COLOUR_NORMAL)%s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort
+
+$(O):
+	@mkdir -p $@
 
 .PHONY: help
