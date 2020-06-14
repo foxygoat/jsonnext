@@ -1,7 +1,4 @@
-#
-# Generic Makefile for Go programs
-#
-
+# --- Global -------------------------------------------------------------------
 O = out
 
 all: test cover lint  ## test, check coverage and lint
@@ -9,16 +6,15 @@ all: test cover lint  ## test, check coverage and lint
 	@echo '$(COLOUR_GREEN)Success$(COLOUR_NORMAL)'
 
 clean::  ## Remove generated files
-	-rm -rf $O
+	-rm -rf $(O)
 
 .PHONY: all clean
 
 # --- Test ---------------------------------------------------------------------
-
-COVERFILE = $O/coverage.txt
+COVERFILE = $(O)/coverage.txt
 COVERAGE = 96.5
 
-test: | $O ## Run tests and generate a coverage file
+test: | $(O)  ## Run tests and generate a coverage file
 	go test -coverprofile=$(COVERFILE) ./...
 
 cover: test  ## Check that test coverage meets the required level
@@ -33,16 +29,15 @@ FAIL_COVERAGE = { echo '$(COLOUR_RED)FAIL - Coverage below $(COVERAGE)%$(COLOUR_
 .PHONY: test cover showcover
 
 # --- Lint ---------------------------------------------------------------------
-
 GOLINT_VERSION = 1.27.0
 GOLINT_INSTALLED_VERSION = $(or $(word 4,$(shell golangci-lint --version 2>/dev/null)),0.0.0)
 GOLINT_MIN_VERSION = $(shell printf '%s\n' $(GOLINT_VERSION) $(GOLINT_INSTALLED_VERSION) | sort -V | head -n 1)
 GOPATH1 = $(firstword $(subst :, ,$(GOPATH)))
-LINT_TARGET = lint-$(if $(filter $(GOLINT_MIN_VERSION),$(GOLINT_VERSION)),local,with-docker)
+LINT_TARGET = $(if $(filter $(GOLINT_MIN_VERSION),$(GOLINT_VERSION)),lint-with-local,lint-with-docker)
 
 lint: $(LINT_TARGET)  ## Lint source code
 
-lint-local:  ## Lint source code with locally installed golangci-lint
+lint-with-local:  ## Lint source code with locally installed golangci-lint
 	golangci-lint run
 
 lint-with-docker:  ## Lint source code with docker image of golangci-lint
@@ -53,7 +48,6 @@ lint-with-docker:  ## Lint source code with docker image of golangci-lint
 .PHONY: lint lint-local lint-with-docker
 
 # --- Utilities ----------------------------------------------------------------
-
 COLOUR_NORMAL = $(shell tput sgr0 2>/dev/null)
 COLOUR_RED    = $(shell tput setaf 1 2>/dev/null)
 COLOUR_GREEN  = $(shell tput setaf 2 2>/dev/null)
