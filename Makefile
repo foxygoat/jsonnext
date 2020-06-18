@@ -4,7 +4,7 @@
 
 O = out
 
-all: test check-coverage lint  ## test, check coverage and lint
+all: test cover lint  ## test, check coverage and lint
 	@if [ -e .git/rebase-merge ]; then git --no-pager log -1 --pretty='%h %s'; fi
 	@echo '$(COLOUR_GREEN)Success$(COLOUR_NORMAL)'
 
