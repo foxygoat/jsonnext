@@ -122,7 +122,11 @@ func (i *Importer) readViaCache(imp string) (jsonnet.Contents, error) {
 		return content, nil
 	}
 
-	content, err := fetch(addScheme(imp), i.fetcher())
+	u, err := addScheme(imp)
+	if err != nil {
+		return noContent, err
+	}
+	content, err := fetch(u, i.fetcher())
 	if err == nil {
 		i.cache[imp] = content
 	}
@@ -157,12 +161,16 @@ func preserveNetRoot(orig, cleaned string) string {
 	return cleaned
 }
 
-func addScheme(imp string) string {
+func addScheme(imp string) (string, error) {
 	if strings.HasPrefix(imp, "//") {
-		return "https:" + imp
+		return "https:" + imp, nil
 	}
 
-	return "file://" + imp
+	abs, err := filepath.Abs(imp)
+	if err != nil {
+		return "", err
+	}
+	return "file://" + abs, nil
 }
 
 func fetch(u string, f URLFetcher) (jsonnet.Contents, error) {
