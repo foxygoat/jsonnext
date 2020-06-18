@@ -16,7 +16,7 @@ clean::  ## Remove generated files
 # --- Test ---------------------------------------------------------------------
 
 COVERFILE = $O/coverage.txt
-COVERAGE = 100
+COVERAGE = 96.5
 
 test: | $O ## Run tests and generate a coverage file
 	go test -coverprofile=$(COVERFILE) ./...

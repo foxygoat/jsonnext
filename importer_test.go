@@ -2,6 +2,7 @@ package jsonnext
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -248,15 +249,18 @@ func TestPreserveNetRoot(t *testing.T) {
 }
 
 func TestAddScheme(t *testing.T) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
 	tests := map[string]struct{ input, expected string }{
 		"absoluteFile": {"/tmp/foo", "file:///tmp/foo"},
-		"relativeFile": {"foo/bar", "file://foo/bar"},
+		"relativeFile": {"foo/bar", fmt.Sprintf("file://%s/foo/bar", cwd)},
 		"networkFile":  {"//example.com/path/to/file", "https://example.com/path/to/file"},
 	}
 	for name, tt := range tests {
 		tt := tt
 		t.Run(name, func(t *testing.T) { //nolint:wsl
-			actual := addScheme(tt.input)
+			actual, err := addScheme(tt.input)
+			require.NoError(t, err)
 			require.Equal(t, tt.expected, actual)
 		})
 	}
