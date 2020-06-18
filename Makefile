@@ -41,7 +41,8 @@ lint-with-local:  ## Lint source code with locally installed golangci-lint
 	golangci-lint run
 
 lint-with-docker:  ## Lint source code with docker image of golangci-lint
-	docker run --rm -v $(GOPATH1):/go -v $(PWD):/src -w /src \
+	docker run --rm -w /src \
+		-v $(PWD):/src -v $(GOPATH1):/go -v $(HOME)/.cache:/root/.cache \
 		golangci/golangci-lint:v$(GOLINT_VERSION) \
 		golangci-lint run
 
