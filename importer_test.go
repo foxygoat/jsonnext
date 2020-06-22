@@ -1,11 +1,8 @@
 package jsonnext
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"strings"
 	"testing"
@@ -43,193 +40,165 @@ func TestAppendSearchFromEnvEmpty(t *testing.T) {
 	require.Equal(t, []string{"//example.com/path", "/local/path"}, i.SearchPath)
 }
 
-type errReader struct {
-	err error
-}
-
-func (r errReader) Read(p []byte) (int, error) {
-	return 0, r.err
-}
-
-type fetcherMock struct {
-	urls       []string
-	statusCode int
-	content    string
-	getErr     error
-	readErr    error
-}
-
-func (f *fetcherMock) Get(url string) (*http.Response, error) {
-	f.urls = append(f.urls, url)
-
-	var body io.Reader
-	if f.readErr != nil {
-		body = errReader{err: f.readErr}
-	} else {
-		body = strings.NewReader(f.content)
-	}
-
-	return &http.Response{StatusCode: f.statusCode, Body: ioutil.NopCloser(body)}, f.getErr
-}
-
-func TestImport(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
-	i := Importer{Fetcher: f}
-
-	contents, location, err := i.Import("/a/y", "x")
-
-	require.NoError(t, err)
-	require.Equal(t, "hello world", contents.String())
-	require.Equal(t, "/a/x", location)
-}
-
-func TestImportNotFound(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
-	i := Importer{Fetcher: f}
-
-	_, _, err := i.Import("/a/y", "x")
-
-	require.Error(t, err)
-}
-
-func TestImportNetpathSource(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
-	i := Importer{Fetcher: f}
-
-	_, _, err := i.Import("//example.com/y", "x")
-
-	require.Error(t, err)
-	require.Equal(t, []string{"https://example.com/x"}, f.urls)
-}
-
-func TestImportRootNetpathSource(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
-	i := Importer{Fetcher: f}
-
-	// Should try to import `//example.com/x`, not `//x`
-	_, _, err := i.Import("//example.com", "x")
-
-	require.Error(t, err)
-	require.Equal(t, []string{"https://example.com/x"}, f.urls)
-}
-
-func TestSearchAbsolute(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
-	i := Importer{Fetcher: f}
-
-	_, location, err := i.search("/x/y/z", "/a")
-
-	require.NoError(t, err)
-	require.Equal(t, "/x/y/z", location)
-	require.Equal(t, []string{"file:///x/y/z"}, f.urls)
-}
-
-func TestSearchRelativeToDir(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
-	i := Importer{Fetcher: f}
-
-	_, location, err := i.search("x", "/a")
-
-	require.NoError(t, err)
-	require.Equal(t, "", location)
-	require.Equal(t, []string{"file:///a/x"}, f.urls)
-}
-
-func TestSearchPathUntilFound(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
-	i := Importer{Fetcher: f, SearchPath: []string{"/1", "/2"}}
-
-	contents, location, err := i.search("x", "/a")
-
-	require.NoError(t, err)
-	require.Equal(t, "/a/x", location)
-	require.Equal(t, []string{"file:///a/x"}, f.urls)
-	require.Equal(t, "hello world", contents.String())
-}
-
-func TestSearchNetpath(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
-	i := Importer{Fetcher: f, SearchPath: []string{"/1", "/2"}}
-
-	contents, location, err := i.search("x", "//example.com")
-
-	require.NoError(t, err)
-	require.Equal(t, "//example.com/x", location)
-	require.Equal(t, []string{"https://example.com/x"}, f.urls)
-	require.Equal(t, "hello world", contents.String())
-}
-
-func TestSearchPathToEnd(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusNotFound, content: ""}
-	i := Importer{Fetcher: f, SearchPath: []string{"/1", "/2"}}
-
-	contents, location, err := i.search("x", "/a")
-
-	require.NoError(t, err)
-	require.Equal(t, "", location)
-	require.Equal(t, []string{"file:///a/x", "file:///1/x", "file:///2/x"}, f.urls)
-	require.Equal(t, noContent, contents)
-}
-
-func TestReadViaCacheEmpty(t *testing.T) {
-	i := Importer{Fetcher: &fetcherMock{statusCode: http.StatusOK, content: "hello world"}}
-
-	require.NotContains(t, i.cache, "file:///test/path")
-	contents, err := i.readViaCache("file:///test/path")
-
-	require.NoError(t, err)
-	require.Equal(t, "hello world", contents.String())
-	require.Contains(t, i.cache, "file:///test/path")
-	require.Equal(t, "hello world", i.cache["file:///test/path"].String())
-}
-
-func TestReadViaCacheNotEmpty(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
-	i := Importer{Fetcher: f}
-
-	// populate the cache
-	_, err := i.readViaCache("file:///test/path")
-	require.NoError(t, err)
-
-	// cached contents will be "hello world". fetcher is now returning "goodbye world"
-	f.content = "goodbye world"
-	contents, err := i.readViaCache("file:///test/path")
-
-	require.NoError(t, err)
-	require.Equal(t, "hello world", contents.String())
-}
-
-func TestReadViaCacheDoesntCacheErrors(t *testing.T) {
-	i := Importer{Fetcher: &fetcherMock{statusCode: http.StatusBadRequest, content: ""}}
-
-	require.NotContains(t, i.cache, "file:///test/path")
-	_, err := i.readViaCache("file:///test/path")
-
-	require.Error(t, err)
-	require.NotContains(t, i.cache, "file:///test/path")
-}
-
-func TestFetcherNew(t *testing.T) {
+func TestImportLocal(t *testing.T) {
 	i := Importer{}
-
-	actual := i.fetcher()
-
-	require.IsType(t, &http.Client{}, actual)
-	c := actual.(*http.Client)
-	require.IsType(t, &http.Transport{}, c.Transport)
-	ts := c.Transport.(*http.Transport)
-	// Test to ensure a "file" scheme handler is registered. By trying to
-	// register one, it will panic if one is already registered.
-	require.Panics(t, func() { ts.RegisterProtocol("file", http.NewFileTransport(http.Dir("/"))) })
+	contents, foundAt, err := i.Import("", "testdata/importer/hello.txt")
+	require.NoError(t, err)
+	require.Equal(t, "hello world\n", contents.String())
+	require.Equal(t, "testdata/importer/hello.txt", foundAt)
 }
 
-func TestFetcherExisting(t *testing.T) {
-	expected := &fetcherMock{}
-	i := Importer{Fetcher: expected}
+func TestImportLocalNotFound(t *testing.T) {
+	i := Importer{}
+	_, _, err := i.Import("", "testdata/importer/notfound.txt")
+	require.Error(t, err)
+}
 
-	actual := i.fetcher()
+// Make reading file by trying to read a directory. That causes read(2) to
+// return EDIR.
+func TestImportLocalReadError(t *testing.T) {
+	i := Importer{}
+	_, _, err := i.Import("", "testdata/importer")
+	require.Error(t, err)
+}
 
-	require.Equal(t, expected, actual)
+func TestImportLocalSourceRelative(t *testing.T) {
+	i := Importer{}
+	contents, foundAt, err := i.Import("testdata/importer/hello.txt", "mellow.txt")
+	require.NoError(t, err)
+	require.Equal(t, "mellow world\n", contents.String())
+	require.Equal(t, "testdata/importer/mellow.txt", foundAt)
+}
+
+func TestImportLocalRelativeSearch(t *testing.T) {
+	i := Importer{}
+	i.SearchPath = []string{"testdata"}
+	contents, foundAt, err := i.Import("", "importer/hello.txt")
+	require.NoError(t, err)
+	require.Equal(t, "hello world\n", contents.String())
+	require.Equal(t, "testdata/importer/hello.txt", foundAt)
+}
+
+func TestImportNetpath(t *testing.T) {
+	s := httptest.NewTLSServer(http.FileServer(http.Dir("testdata")))
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	contents, foundAt, err := i.Import("", np+"/importer/hello.txt")
+	require.NoError(t, err)
+	require.Equal(t, "hello world\n", contents.String())
+	require.Equal(t, np+"/importer/hello.txt", foundAt)
+}
+
+func TestImportNetpathNotFound(t *testing.T) {
+	s := httptest.NewTLSServer(http.FileServer(http.Dir("testdata")))
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	_, _, err := i.Import("", np+"/importer/notfound.txt")
+	require.Error(t, err)
+}
+
+func TestImportNetpathSourceRelative(t *testing.T) {
+	s := httptest.NewTLSServer(http.FileServer(http.Dir("testdata")))
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	contents, foundAt, err := i.Import(np, "importer/mellow.txt")
+	require.NoError(t, err)
+	require.Equal(t, "mellow world\n", contents.String())
+	require.Equal(t, np+"/importer/mellow.txt", foundAt)
+}
+
+// Make the URLFetcher.Get() method return an error by not using the proper
+// TLS client for it to work.
+func TestImportNetpathFetchError(t *testing.T) {
+	s := httptest.NewTLSServer(http.FileServer(http.Dir("testdata")))
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{} // dont use s.Client(), so we get a TLS error
+	_, _, err := i.Import("", np+"/importer/hello.txt")
+	require.Error(t, err)
+}
+
+// Make the httptest server return a non-404 error. By making open(2) fail
+// with ELOOP (with a symlink that links to itself), we get a 500 error.
+func TestImportNetpathHTTPError(t *testing.T) {
+	s := httptest.NewTLSServer(http.FileServer(http.Dir("testdata")))
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	_, _, err := i.Import("", np+"/importer/ELOOP")
+	require.Error(t, err)
+}
+
+type requestRecorder struct {
+	requests []*http.Request
+	next     http.Handler
+}
+
+func (rr *requestRecorder) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	rr.requests = append(rr.requests, r)
+	rr.next.ServeHTTP(w, r)
+}
+
+// Test importing from the cache by importing the same thing twice. We record
+// the requests to the http.Handler and count how many times it was called.
+func TestImportFromCache(t *testing.T) {
+	rr := &requestRecorder{next: http.FileServer(http.Dir("testdata"))}
+	s := httptest.NewTLSServer(rr)
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	require.Equal(t, 0, len(rr.requests))
+
+	contents, foundAt, err := i.Import("", np+"/importer/hello.txt")
+	require.NoError(t, err)
+	require.Equal(t, "hello world\n", contents.String())
+	require.Equal(t, np+"/importer/hello.txt", foundAt)
+	require.Equal(t, 1, len(rr.requests))
+
+	contents, foundAt, err = i.Import("", np+"/importer/hello.txt")
+	require.NoError(t, err)
+	require.Equal(t, "hello world\n", contents.String())
+	require.Equal(t, np+"/importer/hello.txt", foundAt)
+	require.Equal(t, 1, len(rr.requests)) // still 1
+}
+
+// Test that an import of an absolute path does not go through the search
+// path, by importing non-existent file.
+func TestImportAbsolute(t *testing.T) {
+	rr := &requestRecorder{next: http.FileServer(http.Dir("testdata"))}
+	s := httptest.NewTLSServer(rr)
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	i.SearchPath = []string{np + "/importer", np + "/importer/https"}
+	require.Equal(t, 0, len(rr.requests))
+	_, _, err := i.Import("", np+"/importer/notfound.txt")
+	require.Error(t, err)
+	require.Equal(t, 1, len(rr.requests))
+}
+
+func TestImportSearchAllPaths(t *testing.T) {
+	rr := &requestRecorder{next: http.FileServer(http.Dir("testdata"))}
+	s := httptest.NewTLSServer(rr)
+	defer s.Close()
+	np := strings.TrimPrefix(s.URL, "https:")
+
+	i := Importer{Fetcher: s.Client()}
+	i.SearchPath = []string{np + "/importer", np + "/importer/https"}
+	require.Equal(t, 0, len(rr.requests))
+	_, _, err := i.Import("", "notfound.txt")
+	require.Error(t, err)
+	require.Equal(t, 2, len(rr.requests))
 }
 
 func TestPreserveNetRoot(t *testing.T) {
@@ -248,54 +217,13 @@ func TestPreserveNetRoot(t *testing.T) {
 	}
 }
 
-func TestAddScheme(t *testing.T) {
-	cwd, err := os.Getwd()
-	require.NoError(t, err)
-	tests := map[string]struct{ input, expected string }{
-		"absoluteFile": {"/tmp/foo", "file:///tmp/foo"},
-		"relativeFile": {"foo/bar", fmt.Sprintf("file://%s/foo/bar", cwd)},
-		"networkFile":  {"//example.com/path/to/file", "https://example.com/path/to/file"},
-	}
-	for name, tt := range tests {
-		tt := tt
-		t.Run(name, func(t *testing.T) { //nolint:wsl
-			actual, err := addScheme(tt.input)
-			require.NoError(t, err)
-			require.Equal(t, tt.expected, actual)
-		})
-	}
+func TestFetcherNew(t *testing.T) {
+	i := Importer{}
+	require.IsType(t, &http.Client{}, i.fetcher())
 }
 
-func TestFetchOK(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, content: "hello world"}
-	u := "file:///foo"
-	content, err := fetch(u, f)
-	require.NoError(t, err)
-	require.Equal(t, u, f.urls[0])
-	require.Equal(t, f.content, content.String())
-}
-
-func TestFetchNotFound(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusNotFound}
-	content, err := fetch("file:///foo", f)
-	require.NoError(t, err)
-	require.Equal(t, noContent, content)
-}
-
-func TestFetchFetcherErr(t *testing.T) {
-	f := &fetcherMock{getErr: errors.New("get error")}
-	_, err := fetch("file:///foo", f)
-	require.EqualError(t, err, "get error")
-}
-
-func TestFetchStatusErr(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusInternalServerError}
-	_, err := fetch("file:///foo", f)
-	require.Error(t, err)
-}
-
-func TestFetchReadErr(t *testing.T) {
-	f := &fetcherMock{statusCode: http.StatusOK, readErr: errors.New("read error")}
-	_, err := fetch("file:///foo", f)
-	require.EqualError(t, err, "read error")
+func TestFetcherExisting(t *testing.T) {
+	expected := &http.Client{}
+	i := Importer{Fetcher: expected}
+	require.Equal(t, expected, i.fetcher())
 }
