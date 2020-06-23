@@ -4,9 +4,8 @@
 // Importer
 //
 // An implementation of jsonnet.Importer that supports netpaths - paths that
-// start with a double-slash - // - for network paths. Netpaths are converted
-// to https URLs by prepending the "https:" scheme. Other paths are converted
-// to "file:" scheme URLs.
+// start with a double-slash - // - for network paths. Netpaths are retrieved
+// via https using a URLFetcher. Other paths are read from the filesystem.
 //
 // This form of netpath makes it simpler to use in a PATH-style,
 // colon-separated environment variable where the colon in a URL would need to

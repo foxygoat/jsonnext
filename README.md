@@ -28,10 +28,11 @@ method takes the name of an environment variable, splits it on the
 OS-specific ListSeparator and appends the elements to the existing
 search path.
 
-The default `Fetcher` for the importer is the default `http.Client`. It
-can be replaced with any type that implements the `Get` method of
-`http.Client`. Most likely it will be overridden with a `http.Client`
-that has been constructed with a non-default configuration.
+The default `Fetcher` for the importer is the default `http.Client`,
+which is used for importing URLs. It can be replaced with any type that
+implements the `Get` method of `http.Client`. Most likely it will be
+overridden with a `http.Client` that has been constructed with a
+non-default configuration.
 
 The importer maintains a cache of results as is required by the
 `jsonnet.Importer` interface description. Positive and negative results

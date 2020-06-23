@@ -2,19 +2,19 @@ package jsonnext
 
 import (
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	jsonnet "github.com/google/go-jsonnet"
 )
 
 var noContent = jsonnet.Contents{} //nolint:gochecknoglobals
 
-// A URLFetcher retreives a URL returning a http.Response or an error. It
+// A URLFetcher retrieves a URL returning a http.Response or an error. It
 // is defined such that http.Client implements it, but allows a different
 // implementation or a custom-configured http.Client to be provided to
 // the Importer.
@@ -24,8 +24,8 @@ type URLFetcher interface {
 
 // Importer implements the jsonnet.Importer interface, allowing jsonnet code to
 // be imported via https in addition to local files. Filenames starting with a
-// double-slash (`//`) are fetched via HTTPS. Otherwise the path is treated as
-// a local filesystem path.
+// double-slash (`//`) are fetched via HTTPS using the Fetcher of the Importer.
+// Otherwise the path is treated as a local filesystem path.
 //
 // Once an import path is successfully fetched, either with data or a definitive
 // not found result, that result is cached for the lifetime of the Importer.
@@ -39,8 +39,8 @@ type Importer struct {
 	// found. Searching stops when it is found.
 	SearchPath []string
 
-	// Fetcher is the URLFetcher used to fetch paths. The default is a
-	// http.Client that has a `file:` scheme handler.
+	// Fetcher is the URLFetcher used to fetch paths. The default is
+	// &http.Client{}
 	Fetcher URLFetcher
 
 	cache map[string]jsonnet.Contents
@@ -80,7 +80,7 @@ func (i *Importer) Import(source, imp string) (jsonnet.Contents, string, error) 
 	content, location, err := i.search(imp, dir)
 
 	if err == nil && content == noContent {
-		err = fmt.Errorf("couldn't import %#v: not found", imp)
+		err = fmt.Errorf("could not read %#v: not found", imp)
 	}
 
 	return content, location, err
@@ -122,28 +122,57 @@ func (i *Importer) readViaCache(imp string) (jsonnet.Contents, error) {
 		return content, nil
 	}
 
-	u, err := addScheme(imp)
+	content, err := i.fetch(imp)
 	if err != nil {
 		return noContent, err
 	}
-	content, err := fetch(u, i.fetcher())
-	if err == nil {
-		i.cache[imp] = content
+
+	i.cache[imp] = content
+	return content, nil
+}
+
+func (i *Importer) fetch(imp string) (jsonnet.Contents, error) {
+	r, err := i.open(imp)
+	if r == nil || err != nil {
+		return noContent, err
 	}
 
-	return content, err
+	defer r.Close()
+	b, err := ioutil.ReadAll(r)
+	if err != nil {
+		return noContent, err
+	}
+
+	return jsonnet.MakeContents(string(b)), nil
+}
+
+func (i *Importer) open(imp string) (io.ReadCloser, error) {
+	if !isNetpath(imp) {
+		r, err := os.Open(imp)
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return r, err
+	}
+
+	resp, err := i.fetcher().Get("https:" + imp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, nil
+	} else if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("could not fetch %#v: %s", imp, resp.Status)
+	}
+	return resp.Body, nil
 }
 
 func (i *Importer) fetcher() URLFetcher {
+	// TODO(camh): Consider whether this needs to be concurrency-safe
 	if i.Fetcher == nil {
-		// Create a http.Client with a transport handling file:// urls
-		// https://golang.org/pkg/net/http/#NewFileTransport
-		t := &http.Transport{}
-		t.RegisterProtocol("file", http.NewFileTransport(http.Dir("/")))
-
-		i.Fetcher = &http.Client{Transport: t}
+		i.Fetcher = &http.Client{}
 	}
-
 	return i.Fetcher
 }
 
@@ -155,41 +184,12 @@ func (i *Importer) fetcher() URLFetcher {
 // to this importer, we need to preserve that prefix.
 // TODO(camh): Create a "netpath" package with these preservation semantics.
 func preserveNetRoot(orig, cleaned string) string {
-	if len(orig) > 1 && orig[0] == '/' && orig[1] == '/' {
+	if isNetpath(orig) {
 		return "/" + cleaned
 	}
 	return cleaned
 }
 
-func addScheme(imp string) (string, error) {
-	if strings.HasPrefix(imp, "//") {
-		return "https:" + imp, nil
-	}
-
-	abs, err := filepath.Abs(imp)
-	if err != nil {
-		return "", err
-	}
-	return "file://" + abs, nil
-}
-
-func fetch(u string, f URLFetcher) (jsonnet.Contents, error) {
-	resp, err := f.Get(u)
-	if err != nil {
-		return noContent, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusNotFound {
-		return noContent, nil
-	} else if resp.StatusCode != http.StatusOK {
-		return noContent, fmt.Errorf("could not fetch %#v: %s", u, resp.Status)
-	}
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return noContent, err
-	}
-
-	return jsonnet.MakeContents(string(b)), nil
+func isNetpath(path string) bool {
+	return len(path) > 1 && path[0] == '/' && path[1] == '/'
 }
