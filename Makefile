@@ -1,7 +1,7 @@
 # --- Global -------------------------------------------------------------------
 O = out
 
-all: test cover lint  ## test, check coverage and lint
+all: build test cover lint  ## test, check coverage and lint
 	@if [ -e .git/rebase-merge ]; then git --no-pager log -1 --pretty='%h %s'; fi
 	@echo '$(COLOUR_GREEN)Success$(COLOUR_NORMAL)'
 
@@ -9,6 +9,18 @@ clean::  ## Remove generated files
 	-rm -rf $(O)
 
 .PHONY: all clean
+
+# --- Build --------------------------------------------------------------------
+# Build all subdirs of ./cmd, excluding those with a leading underscore.
+CMDDIRS = $(filter-out ./cmd/_%,$(wildcard ./cmd/*))
+
+build: | $(O)  ## Build binaries of directories in ./cmd to out/
+	go build -o $(O) $(CMDDIRS)
+
+install:  ## Build and install binaries in $GOBIN or $GOPATH/bin
+	go install $(CMDDIRS)
+
+.PHONY: build install
 
 # --- Test ---------------------------------------------------------------------
 COVERFILE = $(O)/coverage.txt
