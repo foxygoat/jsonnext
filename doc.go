@@ -10,5 +10,4 @@
 // This form of netpath makes it simpler to use in a PATH-style,
 // colon-separated environment variable where the colon in a URL would need to
 // be escaped.
-
 package jsonnext
