@@ -37,4 +37,23 @@
 // VMVarMap has a helper to parse string forms of entries with the option to
 // take values from environment variables to support jsonnet command-line
 // use cases.
+//
+// Flag
+//
+// Functions that wrap flag.Var to define the flags for the Config struct using
+// types that implement flag.Value to suitably parse the CLI options.
+//
+// The flag names and use align with the standard jsonnet CLI options as much
+// as possible, with minor variations due to how the Go flag package works,
+// such as single-hyphen long flag prefixes.
+//
+// The simplest use of flags is to let it create the Config struct for you with
+// flags bound to the fields of that instance:
+//
+//     cfg := jsonnext.ConfigFlags(flag.CommandLine)
+//     flag.Parse()
+//     cfg.ConfigureVM(vm)
+//
+// However the functions that create the individual flag types are exported so
+// they can be used to define different flag names for an application.
 package jsonnext

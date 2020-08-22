@@ -16,6 +16,7 @@ CMDDIRS = $(filter-out ./cmd/_%,$(wildcard ./cmd/*))
 
 build: | $(O)  ## Build binaries of directories in ./cmd to out/
 	go build -o $(O) $(CMDDIRS)
+	go build -tags flag -o $(O)/jx-flag ./cmd/jx
 
 install:  ## Build and install binaries in $GOBIN or $GOPATH/bin
 	go install $(CMDDIRS)

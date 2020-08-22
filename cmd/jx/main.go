@@ -5,8 +5,7 @@ import (
 	"os"
 
 	jxkong "foxygo.at/jsonnext/kong"
-	"github.com/alecthomas/kong"
-	"github.com/google/go-jsonnet"
+	jsonnet "github.com/google/go-jsonnet"
 )
 
 type config struct {
@@ -24,12 +23,6 @@ func main() {
 		os.Exit(1)
 	}
 	fmt.Print(out)
-}
-
-func parseCLI() *config {
-	c := &config{Config: *jxkong.NewConfig()}
-	kong.Parse(c)
-	return c
 }
 
 func run(vm *jsonnet.VM, filename string) (string, error) {
