@@ -19,11 +19,12 @@ var (
 // Config holds configuration for a jsonnet VM and the Importer defined in this
 // jsonnext package. An application can populate this struct directly from
 // whatever source of configuration it uses and use it to configure the jsonnet
-// VM.
+// VM. This package provides two options for populating it from the command line
+// (Go flags or Kong).
 type Config struct {
-	ImportPath []string
-	ExtVars    VMVarMap
-	TLAVars    VMVarMap
+	ImportPath []string `name:"jpath" sep:"none" short:"J" placeholder:"dir" help:"Add a library search dir"`
+	ExtVars    VMVarMap `kong:"-"`
+	TLAVars    VMVarMap `kong:"-"`
 }
 
 // NewConfig returns a new initialised but empty Config struct.
