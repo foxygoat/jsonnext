@@ -4,35 +4,25 @@ import (
 	"fmt"
 	"os"
 
-	"foxygo.at/jsonnext"
-	"github.com/alecthomas/kong"
-	"github.com/google/go-jsonnet"
+	jxkong "foxygo.at/jsonnext/kong"
+	jsonnet "github.com/google/go-jsonnet"
 )
 
-var CLI struct {
-	ImportPath []string `name:"jpath" sep:":" short:"J"`
-	Filename   string   `arg:"" optional:"" help:"File to evaluate. stdin is used if omitted or \"-\""`
+type config struct {
+	jxkong.Config
+	Filename string `arg:"" optional:"" help:"File to evaluate. stdin is used if omitted or \"-\""`
 }
 
 func main() {
-	kong.Parse(&CLI)
+	cli := parseCLI()
+	vm := cli.Config.MakeVM("JXPATH")
 
-	vm := jsonnet.MakeVM()
-	i := newImporter(CLI.ImportPath)
-	vm.Importer(i)
-
-	out, err := run(vm, CLI.Filename)
+	out, err := run(vm, cli.Filename)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 	fmt.Print(out)
-}
-
-func newImporter(importPath []string) *jsonnext.Importer {
-	i := jsonnext.Importer{SearchPath: importPath}
-	i.AppendSearchFromEnv("JXPATH")
-	return &i
 }
 
 func run(vm *jsonnet.VM, filename string) (string, error) {

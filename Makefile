@@ -1,7 +1,7 @@
 # --- Global -------------------------------------------------------------------
 O = out
 
-all: build test cover lint  ## test, check coverage and lint
+all: build test check-coverage lint  ## build, test, check coverage and lint
 	@if [ -e .git/rebase-merge ]; then git --no-pager log -1 --pretty='%h %s'; fi
 	@echo '$(COLOUR_GREEN)Success$(COLOUR_NORMAL)'
 
@@ -16,6 +16,7 @@ CMDDIRS = $(filter-out ./cmd/_%,$(wildcard ./cmd/*))
 
 build: | $(O)  ## Build binaries of directories in ./cmd to out/
 	go build -o $(O) $(CMDDIRS)
+	go build -tags flag -o $(O)/jx-flag ./cmd/jx
 
 install:  ## Build and install binaries in $GOBIN or $GOPATH/bin
 	go install $(CMDDIRS)
@@ -29,16 +30,16 @@ COVERAGE = 96.5
 test: | $(O)  ## Run tests and generate a coverage file
 	go test -coverprofile=$(COVERFILE) ./...
 
-cover: test  ## Check that test coverage meets the required level
+check-coverage: test  ## Check that test coverage meets the required level
 	@go tool cover -func=$(COVERFILE) | $(CHECK_COVERAGE) || $(FAIL_COVERAGE)
 
-showcover: test  ## Show test coverage in your browser
+cover: test  ## Show test coverage in your browser
 	go tool cover -html=$(COVERFILE)
 
-CHECK_COVERAGE = awk -F '[ \t%]+' '/^total:/ && $$3 < $(COVERAGE) {exit 1}'
+CHECK_COVERAGE = awk -F '[ \t%]+' '/^total:/ {print; if ($$3 < $(COVERAGE)) exit 1}'
 FAIL_COVERAGE = { echo '$(COLOUR_RED)FAIL - Coverage below $(COVERAGE)%$(COLOUR_NORMAL)'; exit 1; }
 
-.PHONY: test cover showcover
+.PHONY: check-coverage cover test
 
 # --- Lint ---------------------------------------------------------------------
 GOLINT_VERSION = 1.27.0
@@ -54,11 +55,11 @@ lint-with-local:  ## Lint source code with locally installed golangci-lint
 
 lint-with-docker:  ## Lint source code with docker image of golangci-lint
 	docker run --rm -w /src \
-		-v $(PWD):/src -v $(GOPATH1):/go -v $(HOME)/.cache:/root/.cache \
+		-v $(shell pwd):/src -v $(GOPATH1):/go -v $(HOME)/.cache:/root/.cache \
 		golangci/golangci-lint:v$(GOLINT_VERSION) \
 		golangci-lint run
 
-.PHONY: lint lint-local lint-with-docker
+.PHONY: lint lint-with-local lint-with-docker
 
 # --- Utilities ----------------------------------------------------------------
 COLOUR_NORMAL = $(shell tput sgr0 2>/dev/null)
