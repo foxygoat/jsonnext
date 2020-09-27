@@ -137,7 +137,7 @@ func (i *Importer) fetch(imp string) (jsonnet.Contents, error) {
 		return noContent, err
 	}
 
-	defer r.Close()
+	defer r.Close() //nolint:errcheck
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
 		return noContent, err
@@ -148,7 +148,7 @@ func (i *Importer) fetch(imp string) (jsonnet.Contents, error) {
 
 func (i *Importer) open(imp string) (io.ReadCloser, error) {
 	if !isNetpath(imp) {
-		r, err := os.Open(imp)
+		r, err := os.Open(imp) //nolint:gosec // We want to open user specified paths.
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
@@ -161,10 +161,13 @@ func (i *Importer) open(imp string) (io.ReadCloser, error) {
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
+		_ = resp.Body.Close()
 		return nil, nil
 	} else if resp.StatusCode != http.StatusOK {
+		_ = resp.Body.Close()
 		return nil, fmt.Errorf("could not fetch %#v: %s", imp, resp.Status)
 	}
+
 	return resp.Body, nil
 }
 
