@@ -4,6 +4,7 @@
 //
 
 [
+  import 'op_test.jsonnet',
   import 'string_test.jsonnet',
   import 'value_test.jsonnet',
 ]
