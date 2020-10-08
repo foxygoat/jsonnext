@@ -2,6 +2,7 @@
 // jx library.
 {
   array:: import 'array.jsonnet',
+  object:: import 'object.jsonnet',
   op:: import 'op.jsonnet',
   string:: import 'string.jsonnet',
   value:: import 'value.libsonnet',
