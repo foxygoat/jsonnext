@@ -11,24 +11,30 @@ clean::  ## Remove generated files
 .PHONY: all clean
 
 # --- Build --------------------------------------------------------------------
-# Build all subdirs of ./cmd, excluding those with a leading underscore.
-CMDDIRS = $(filter-out ./cmd/_%,$(wildcard ./cmd/*))
 
 build: | $(O)  ## Build binaries of directories in ./cmd to out/
-	go build -o $(O) $(CMDDIRS)
+	go build -o $(O) ./cmd/...
 	go build -tags flag -o $(O)/jx-flag ./cmd/jx
 
 install:  ## Build and install binaries in $GOBIN or $GOPATH/bin
-	go install $(CMDDIRS)
+	go install ./cmd/...
+
+$(O)/jx: build
 
 .PHONY: build install
 
 # --- Test ---------------------------------------------------------------------
 COVERFILE = $(O)/coverage.txt
 COVERAGE = 96.5
+JSONNET_UNIT = //github.com/yugui/jsonnetunit/raw/master
 
-test: | $(O)  ## Run tests and generate a coverage file
+test: test-go test-jsonnet  ## Run tests and generate a coverage file
+
+test-go: | $(O)
 	go test -coverprofile=$(COVERFILE) ./...
+
+test-jsonnet: $(O)/jx
+	$(O)/jx -J $(JSONNET_UNIT) lib/jx_test.jsonnet
 
 check-coverage: test  ## Check that test coverage meets the required level
 	@go tool cover -func=$(COVERFILE) | $(CHECK_COVERAGE) || $(FAIL_COVERAGE)
