@@ -43,7 +43,7 @@ func TestVars(t *testing.T) {
 			}
 			vm := jsonnet.MakeVM()
 			c.ConfigureVM(vm)
-			got, err := vm.EvaluateSnippet("<literal>", snippet)
+			got, err := vm.EvaluateAnonymousSnippet("<literal>", snippet)
 			require.NoError(t, err)
 			require.Equal(t, `"val"`, strings.TrimSuffix(got, "\n"))
 		})
@@ -96,11 +96,11 @@ func TestMakeVM(t *testing.T) {
 
 	vm := c.MakeVM("JPATH")
 
-	got, err := vm.EvaluateSnippet("<literal>", "std.extVar('var')")
+	got, err := vm.EvaluateAnonymousSnippet("<literal>", "std.extVar('var')")
 	require.NoError(t, err)
 	require.Equal(t, `"val"`, strings.TrimSuffix(got, "\n"))
 
-	got, err = vm.EvaluateSnippet("<literal>", "function(var) var")
+	got, err = vm.EvaluateAnonymousSnippet("<literal>", "function(var) var")
 	require.NoError(t, err)
 	require.Equal(t, `"val"`, strings.TrimSuffix(got, "\n"))
 }
