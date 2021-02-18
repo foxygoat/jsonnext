@@ -26,10 +26,6 @@ func main() {
 }
 
 func run(vm *jsonnet.VM, filename string) (string, error) {
-	if filename == "" || filename == "-" {
-		filename = "/dev/stdin"
-	}
-
 	node, _, err := vm.ImportAST("", filename)
 	if err != nil {
 		return "", err

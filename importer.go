@@ -12,6 +12,8 @@ import (
 	jsonnet "github.com/google/go-jsonnet"
 )
 
+const stdin = ""
+
 var noContent = jsonnet.Contents{} //nolint:gochecknoglobals
 
 // A URLFetcher retrieves a URL returning a http.Response or an error. It
@@ -25,14 +27,17 @@ type URLFetcher interface {
 // Importer implements the jsonnet.Importer interface, allowing jsonnet code to
 // be imported via https in addition to local files. Filenames starting with a
 // double-slash (`//`) are fetched via HTTPS using the Fetcher of the Importer.
-// Otherwise the path is treated as a local filesystem path.
+// Otherwise the path is treated as a local filesystem path. An empty path, a
+// path of "-" and a path of "/dev/stdin" are treated as standard input.
+// "/dev/stdin" is handled specially as any imports in the code read from stdin
+// should not be searched relative to "/dev".
 //
-// Once an import path is successfully fetched, either with data or a definitive
-// not found result, that result is cached for the lifetime of the Importer.
-// This is a requirement of the jsonnet.Importer interface so it is not possible
-// for the same import statement from different files to result in different
-// content. If an Importer is shared across multiple jsonnet.VM instances,
-// the the cache will be shared too. There is no cache expiry logic.
+// Once an import path is successfully fetched, either with data or a
+// definitive not found result, that result is cached for the lifetime of the
+// Importer. This is a requirement of the jsonnet.Importer interface so it is
+// not possible for the same import statement from different files to result in
+// different content. If an Importer is shared across multiple jsonnet.VM
+// instances, the the cache will be shared too. There is no cache expiry logic.
 type Importer struct {
 	// SearchPath is an ordered slice of paths (network or local filesystem)
 	// that is prepended to the imported filename if the filename is not
@@ -71,6 +76,7 @@ func (i *Importer) AppendSearchFromEnv(envvar string) {
 // This method is defined in the jsonnet.Importer interface:
 //   https://godoc.org/github.com/google/go-jsonnet#Importer
 func (i *Importer) Import(source, imp string) (jsonnet.Contents, string, error) {
+	imp = mapStdin(imp)
 	dir := path.Dir(source)
 	if dir = preserveNetRoot(source, dir); dir == "//" {
 		// There's no such thing as a "root" netpath. Preserve the
@@ -87,7 +93,7 @@ func (i *Importer) Import(source, imp string) (jsonnet.Contents, string, error) 
 }
 
 func (i *Importer) search(imp, dir string) (jsonnet.Contents, string, error) {
-	if path.IsAbs(imp) {
+	if path.IsAbs(imp) || imp == stdin {
 		content, err := i.readViaCache(imp)
 		return content, imp, err
 	}
@@ -132,6 +138,9 @@ func (i *Importer) readViaCache(imp string) (jsonnet.Contents, error) {
 }
 
 func (i *Importer) fetch(imp string) (jsonnet.Contents, error) {
+	if imp == stdin {
+		imp = "/dev/stdin"
+	}
 	r, err := i.open(imp)
 	if r == nil || err != nil {
 		return noContent, err
@@ -195,4 +204,11 @@ func preserveNetRoot(orig, cleaned string) string {
 
 func isNetpath(path string) bool {
 	return len(path) > 1 && path[0] == '/' && path[1] == '/'
+}
+
+func mapStdin(path string) string {
+	if path == "/dev/stdin" || path == "-" {
+		path = stdin
+	}
+	return path
 }
