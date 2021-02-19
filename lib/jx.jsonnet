@@ -5,5 +5,5 @@
   object:: import 'object.jsonnet',
   op:: import 'op.jsonnet',
   string:: import 'string.jsonnet',
-  value:: import 'value.libsonnet',
+  value:: import 'value.jsonnet',
 }
