@@ -48,24 +48,21 @@ FAIL_COVERAGE = { echo '$(COLOUR_RED)FAIL - Coverage below $(COVERAGE)%$(COLOUR_
 .PHONY: check-coverage cover test
 
 # --- Lint ---------------------------------------------------------------------
-GOLINT_VERSION = 1.31.0
+GOLINT_VERSION = 1.37.0
 GOLINT_INSTALLED_VERSION = $(or $(word 4,$(shell golangci-lint --version 2>/dev/null)),0.0.0)
-GOLINT_MIN_VERSION = $(shell printf '%s\n' $(GOLINT_VERSION) $(GOLINT_INSTALLED_VERSION) | sort -V | head -n 1)
-GOPATH1 = $(firstword $(subst :, ,$(GOPATH)))
-LINT_TARGET = $(if $(filter $(GOLINT_MIN_VERSION),$(GOLINT_VERSION)),lint-with-local,lint-with-docker)
+GOLINT_USE_INSTALLED = $(filter $(GOLINT_INSTALLED_VERSION),v$(GOLINT_VERSION) $(GOLINT_VERSION))
+GOLINT = $(if $(GOLINT_USE_INSTALLED),golangci-lint,golangci-lint-v$(GOLINT_VERSION))
 
-lint: $(LINT_TARGET)  ## Lint source code
+GOBIN ?= $(firstword $(subst :, ,$(or $(GOPATH),$(HOME)/go)))/bin
 
-lint-with-local:  ## Lint source code with locally installed golangci-lint
-	golangci-lint run
+lint: $(if $(GOLINT_USE_INSTALLED),,$(GOBIN)/$(GOLINT))  ## Lint go source code
+	$(GOLINT) run
 
-lint-with-docker:  ## Lint source code with docker image of golangci-lint
-	docker run --rm -w /src \
-		-v $(shell pwd):/src -v $(GOPATH1):/go -v $(HOME)/.cache:/root/.cache \
-		golangci/golangci-lint:v$(GOLINT_VERSION) \
-		golangci-lint run
+$(GOBIN)/$(GOLINT):
+	GOBIN=/tmp go install github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLINT_VERSION) && \
+	      mv /tmp/golangci-lint $@
 
-.PHONY: lint lint-with-local lint-with-docker
+.PHONY: lint
 
 # --- Utilities ----------------------------------------------------------------
 COLOUR_NORMAL = $(shell tput sgr0 2>/dev/null)

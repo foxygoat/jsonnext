@@ -36,7 +36,7 @@ func Example() {
 
 	// Evaluate jsonnet snippet that references defined vars
 	code := "function(tlavar) std.repeat(std.extVar('extvar'), tlavar)"
-	result, _ := vm.EvaluateSnippet("<literal>", code)
+	result, _ := vm.EvaluateAnonymousSnippet("<literal>", code)
 
 	fmt.Println(cli.Filename)
 	fmt.Printf("verbose: %v\n", cli.Verbose)

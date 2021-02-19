@@ -84,7 +84,7 @@ func (m VMVarMap) ConfigureVM(vm *jsonnet.VM) {
 // required).
 //
 // makevar will typically be one of the VMVar constructor functions in this
-// package: New{Ext,TLA}{Str,Code}{,File}.
+// package - New{Ext,TLA}{Str,Code}{,File}.
 func (m VMVarMap) SetVar(v string, makevar func(string) VMVar) error {
 	parts := strings.SplitN(v, "=", 2)
 	if parts[0] == "" {

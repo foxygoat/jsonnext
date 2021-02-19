@@ -18,7 +18,7 @@ func ExampleConfig_ConfigureVM() {
 	cfg.ConfigureVM(vm)
 
 	// "<literal>" is the filename for error reporting.
-	str, _ := vm.EvaluateSnippet("<literal>", "function(tlavar) std.extVar('extvar') + tlavar")
+	str, _ := vm.EvaluateAnonymousSnippet("<literal>", "function(tlavar) std.extVar('extvar') + tlavar")
 	fmt.Println(str)
 	// Output: "hello world"
 }
@@ -36,7 +36,7 @@ func ExampleConfig_ConfigureImporter() {
 	cfg.ConfigureImporter(i, "EXAMPLE_PATH")
 
 	// "<literal>" is the filename for error reporting.
-	str, _ := vm.EvaluateSnippet("<literal>", `[importstr "hello.txt", importstr "importer/mellow.txt"]`)
+	str, _ := vm.EvaluateAnonymousSnippet("<literal>", `[importstr "hello.txt", importstr "importer/mellow.txt"]`)
 	fmt.Println(str)
 	// Output:
 	// [
