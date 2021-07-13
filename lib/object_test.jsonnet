@@ -1,4 +1,4 @@
-#!/usr/bin/env -S jx -J //github.com/yugui/jsonnetunit/raw/master
+#!/usr/bin/env -S jnx -J //github.com/yugui/jsonnetunit/raw/master
 
 local test = import 'jsonnetunit/test.libsonnet';
 local object = import 'object.jsonnet';
