@@ -1,6 +1,6 @@
-// jx evaluates a jsonnet file and outputs it as JSON.
+// jnx evaluates a jsonnet file and outputs it as JSON.
 //
-// Usage: jx [<filename>]
+// Usage: jnx [<filename>]
 //
 // Arguments:
 //   [<filename>]    File to evaluate. stdin is used if omitted or "-"
