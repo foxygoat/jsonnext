@@ -9,6 +9,11 @@ import (
 	jsonnet "github.com/google/go-jsonnet"
 )
 
+const (
+	maxStackDepth       = 500 // default from jsonnet
+	maxStackTraceOutput = 20  // default from jsonnet
+)
+
 // Sentinel errors returned by Config functions. Callers can use errors.Is
 // with these sentinels to handle the specific types of errors.
 var (
@@ -25,13 +30,17 @@ type Config struct {
 	ImportPath []string `name:"jpath" sep:"none" short:"J" placeholder:"dir" help:"Add a library search dir"`
 	ExtVars    VMVarMap `kong:"-"`
 	TLAVars    VMVarMap `kong:"-"`
+	MaxStack   int      `default:"500" help:"Number of allowed stack frames of jsonnet VM"`
+	MaxTrace   int      `default:"20" help:"Maximum number of stack frames output on error"`
 }
 
 // NewConfig returns a new initialised but empty Config struct.
 func NewConfig() *Config {
 	return &Config{
-		ExtVars: VMVarMap{},
-		TLAVars: VMVarMap{},
+		ExtVars:  VMVarMap{},
+		TLAVars:  VMVarMap{},
+		MaxStack: maxStackDepth,
+		MaxTrace: maxStackTraceOutput,
 	}
 }
 
@@ -63,6 +72,8 @@ func (c *Config) ConfigureImporter(i *Importer, envvar string) {
 func (c *Config) ConfigureVM(vm *jsonnet.VM) {
 	c.ExtVars.ConfigureVM(vm)
 	c.TLAVars.ConfigureVM(vm)
+	vm.MaxStack = c.MaxStack
+	vm.ErrorFormatter.SetMaxStackTraceSize(c.MaxTrace)
 }
 
 // VMVarMap is a map of VMVars that contains a common namespace for variable
