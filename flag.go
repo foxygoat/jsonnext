@@ -42,6 +42,8 @@ func ConfigFlagsVar(fs *flag.FlagSet, c *Config) {
 	TLACodeVar(fs, c.TLAVars, "tla-code", "Add top-level arg `var[=code]` (from environment if <code> is omitted)")
 	TLAStrFileVar(fs, c.TLAVars, "tla-str-file", "Add top-level arg `var=file` string from a file")
 	TLACodeFileVar(fs, c.TLAVars, "tla-code-file", "Add top-level arg `var=file` code from a file")
+	fs.IntVar(&c.MaxStack, "max-stack", 500, "Number of allowed stack frames of jsonnet VM")
+	fs.IntVar(&c.MaxTrace, "max-trace", 20, "Maximum number of stack frames output on error")
 
 	// Add short flags. TODO(camh): consider making these optional.
 	StringSliceVar(fs, &c.ImportPath, "J", "Add a library search `dir`")

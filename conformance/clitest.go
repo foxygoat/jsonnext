@@ -141,3 +141,31 @@ func (s *Suite) TestImportPath() {
 	expected.ImportPath = []string{"a", "b"}
 	require.Equal(t, expected, cfg)
 }
+
+// TestMaxStack tests that the MaxStack field is set by the --max-stack flag,
+// and that the default is set when the flag is not present.
+func (s *Suite) TestMaxStack() {
+	t := s.T()
+
+	cfg, err := s.parser.Parse(t, []string{t.Name(), "--max-stack", "10"})
+	require.NoError(t, err)
+	require.Equal(t, 10, cfg.MaxStack)
+
+	cfg, err = s.parser.Parse(t, []string{t.Name()})
+	require.NoError(t, err)
+	require.Equal(t, 500, cfg.MaxStack)
+}
+
+// TestMaxTrace tests that the MaxTrace field is set by the --max-trace flag,
+// and that the default is set when the flag is not present.
+func (s *Suite) TestMaxTrace() {
+	t := s.T()
+
+	cfg, err := s.parser.Parse(t, []string{t.Name(), "--max-trace", "10"})
+	require.NoError(t, err)
+	require.Equal(t, 10, cfg.MaxTrace)
+
+	cfg, err = s.parser.Parse(t, []string{t.Name()})
+	require.NoError(t, err)
+	require.Equal(t, 20, cfg.MaxTrace)
+}
