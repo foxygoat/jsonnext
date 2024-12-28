@@ -88,6 +88,15 @@ test.suite({
     expect: [],
   },
 
+  testMap: {
+    actual: object.map(function(k, v) [k, v], { a: 1, b: 2 }),
+    expect: [['a', 1], ['b', 2]],
+  },
+  testMapEmpty: {
+    actual: object.map(function(k, v) [k, v], {}),
+    expect: [],
+  },
+
   testMake: {
     actual: object.make([['a', 1], ['b', 2]]),
     expect: o,  // only the visible fields are compared.
@@ -159,5 +168,26 @@ test.suite({
   testInvertAll: {
     actual: object.invertAll({ a: 'foo', b: 'bar', c:: 'bar', d:: 'baz' }),
     expect: { foo: ['a'], bar: ['b', 'c'], baz: ['d'] },
+  },
+
+  testAsNamedArray: {
+    actual: object.asNamedArray({ a: {}, b: {} }),
+    expect: [{ name: 'a' }, { name: 'b' }],
+  },
+  testAsNamedArrayEmpty: {
+    actual: object.asNamedArray({}),
+    expect: [],
+  },
+  testAsNamedArrayWithNameField: {
+    actual: object.asNamedArray({ a: {}, b: {} }, nameField='foo'),
+    expect: [{ foo: 'a' }, { foo: 'b' }],
+  },
+  testAsNamedArrayPreserveName: {
+    actual: object.asNamedArray({ a: {}, b: { name: 'foo' } }),
+    expect: [{ name: 'a' }, { name: 'foo' }],
+  },
+  testAsNamedArrayNonObject: {
+    actual: object.asNamedArray({ a: 'hello', b: 'world' }, valueField='value'),
+    expect: [{ name: 'a', value: 'hello' }, { name: 'b', value: 'world' }],
   },
 })
