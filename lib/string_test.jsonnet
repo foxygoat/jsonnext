@@ -29,4 +29,17 @@ test.suite({
     actual: string.contains('', ''),
     expect: true,
   },
+
+  testFind: {
+    actual: string.find('hello', 'e'),
+    expect: 1,
+  },
+  testFindNotFound: {
+    actual: string.find('hello', 'x'),
+    expect: -1,
+  },
+  testFullMatch: {
+    actual: string.find('hello', 'hello'),
+    expect: 0,
+  },
 })
