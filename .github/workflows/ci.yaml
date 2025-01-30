@@ -7,7 +7,6 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
 
 jobs:
   test:
@@ -15,9 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/setup-go@v2
-        with:
-          go-version: '^1.14'
       - run: make test
       - run: make cover
   lint:
@@ -25,6 +21,4 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: golangci/golangci-lint-action@v2
-        with:
-          version: v1.37.0
+      - run: make lint

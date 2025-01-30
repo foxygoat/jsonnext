@@ -48,19 +48,9 @@ FAIL_COVERAGE = { echo '$(COLOUR_RED)FAIL - Coverage below $(COVERAGE)%$(COLOUR_
 .PHONY: check-coverage cover test
 
 # --- Lint ---------------------------------------------------------------------
-GOLINT_VERSION = 1.37.0
-GOLINT_INSTALLED_VERSION = $(or $(word 4,$(shell golangci-lint --version 2>/dev/null)),0.0.0)
-GOLINT_USE_INSTALLED = $(filter $(GOLINT_INSTALLED_VERSION),v$(GOLINT_VERSION) $(GOLINT_VERSION))
-GOLINT = $(if $(GOLINT_USE_INSTALLED),golangci-lint,golangci-lint-v$(GOLINT_VERSION))
 
-GOBIN ?= $(firstword $(subst :, ,$(or $(GOPATH),$(HOME)/go)))/bin
-
-lint: $(if $(GOLINT_USE_INSTALLED),,$(GOBIN)/$(GOLINT))  ## Lint go source code
-	$(GOLINT) run
-
-$(GOBIN)/$(GOLINT):
-	GOBIN=/tmp go install github.com/golangci/golangci-lint/cmd/golangci-lint@v$(GOLINT_VERSION) && \
-	      mv /tmp/golangci-lint $@
+lint:  ## Lint go source code
+	golangci-lint run
 
 .PHONY: lint
 
@@ -77,3 +67,11 @@ $(O):
 	@mkdir -p $@
 
 .PHONY: help
+
+define nl
+
+
+endef
+ifndef ACTIVE_HERMIT
+$(eval $(subst \n,$(nl),$(shell bin/hermit env -r | sed 's/^\(.*\)$$/export \1\\n/')))
+endif
