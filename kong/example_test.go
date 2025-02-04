@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"os"
 
-	jxkong "foxygo.at/jsonnext/kong"
+	jnxkong "foxygo.at/jsonnext/kong"
 	"github.com/alecthomas/kong"
 )
 
 func Example() {
-	// Define kong CLI struct embedding jxkong.Config, adding your own
+	// Define kong CLI struct embedding jnxkong.Config, adding your own
 	// application-specific flags and args.
 	cli := struct {
-		jxkong.Config
+		jnxkong.Config
 		Verbose  bool
 		Filename string `arg:""`
 	}{
-		Config: *jxkong.NewConfig(), // foxygo.at/jsonnext/kong imported as jxkong
+		Config: *jnxkong.NewConfig(), // foxygo.at/jsonnext/kong imported as jnxkong
 	}
 
 	// Simulate command line arguments

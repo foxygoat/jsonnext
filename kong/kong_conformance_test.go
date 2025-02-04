@@ -7,13 +7,13 @@ import (
 
 	"foxygo.at/jsonnext"
 	"foxygo.at/jsonnext/conformance"
-	jxkong "foxygo.at/jsonnext/kong"
+	jnxkong "foxygo.at/jsonnext/kong"
 )
 
 type suite struct{}
 
 func (s *suite) Parse(t *testing.T, args []string) (*jsonnext.Config, error) {
-	kcfg := jxkong.NewConfig()
+	kcfg := jnxkong.NewConfig()
 	parser, err := kong.New(kcfg)
 	if err != nil {
 		return nil, err

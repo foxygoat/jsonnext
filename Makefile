@@ -14,12 +14,11 @@ clean::  ## Remove generated files
 
 build: | $(O)  ## Build binaries of directories in ./cmd to out/
 	go build -o $(O) ./cmd/...
-	go build -tags flag -o $(O)/jx-flag ./cmd/jx
 
 install:  ## Build and install binaries in $GOBIN or $GOPATH/bin
 	go install ./cmd/...
 
-$(O)/jx: build
+$(O)/jnx: build
 
 .PHONY: build install
 
@@ -33,8 +32,8 @@ test: test-go test-jsonnet  ## Run tests and generate a coverage file
 test-go: | $(O)
 	go test -coverprofile=$(COVERFILE) ./...
 
-test-jsonnet: $(O)/jx
-	$(O)/jx -J $(JSONNET_UNIT) lib/jx_test.jsonnet
+test-jsonnet: $(O)/jnx
+	$(O)/jnx -J $(JSONNET_UNIT) lib/jnx_test.jsonnet
 
 check-coverage: test  ## Check that test coverage meets the required level
 	@go tool cover -func=$(COVERFILE) | $(CHECK_COVERAGE) || $(FAIL_COVERAGE)
