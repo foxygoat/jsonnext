@@ -46,6 +46,11 @@
   // `[key, value]` pairs.
   kvHidden(obj):: [[k, obj[k]] for k in object.keysHidden(obj)],
 
+  // map applies a function taking a key and value to each non-hidden field
+  // of a the given object to return an array of values returned by each
+  // invocation of the given function.
+  map(fn, obj):: [fn(kv[0], kv[1]) for kv in object.kv(obj)],
+
   // transform calls @fn(key, value) on each field of @obj passing it the key
   // and the value of each field and using the result of @fn to build the
   // result of transform. It can remove fields, rename fields or change the
@@ -94,4 +99,11 @@
   invertAll(obj):: __invert(obj, object.keysAll),
 
   local __invert(obj, selector) = array.accumulate([{ [obj[k]]+: [k] } for k in selector(obj)]),
+
+  // asNamedArray transforms the object @obj into an array of the values in the
+  // object, adding a name field of the value's key if it does not have a name
+  // field. The default @nameField is 'name', but can be overridden.
+  asNamedArray(obj, nameField='name', valueField=null)::
+    local mkobj(v) = if valueField == null then v else { [valueField]: v };
+    [{ [nameField]: kv[0] } + mkobj(kv[1]) for kv in object.kv(obj)],
 }
