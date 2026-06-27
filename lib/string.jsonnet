@@ -16,4 +16,17 @@
       true
     else
       std.strReplace(str, substr, '') != str,
+
+  find(str, char)::
+    local _find(str, char, pos) =
+      if std.length(str) == 0 then -1
+      else if std.startsWith(str, char) then pos
+      else _find(str[1:], char, pos + 1);
+    if !std.isString(str) then
+      error ('string.find first param must be a string, got ' + std.type(str))
+    else if !std.isString(char) then
+      error ('string.find secomd param must be a string, got ' + std.type(char))
+    else if std.length(char) == 0 then -1  // empty string is not in string
+    else _find(str, char, 0),
+
 }
